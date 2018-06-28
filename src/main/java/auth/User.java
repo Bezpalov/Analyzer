@@ -9,21 +9,33 @@ import javafx.application.Application;
 
 
 public class User implements Uriparts{
+    private static User user;
     private static String code;
 
-    private TransportClient transportClient;
-    private VkApiClient apiClient;
-    private UserAuthResponse authResponse;
-    private UserActor actor;
+    private final TransportClient transportClient;
+    private final VkApiClient apiClient;
+    private final UserAuthResponse authResponse;
+    private final UserActor actor;
 
 
-    public User() throws Exception {
+    private User() throws Exception {
         transportClient = HttpTransportClient.getInstance();
         apiClient = new VkApiClient(transportClient);
         Application.launch(UserAuth.class);
         authResponse = apiClient.oauth()
                 .userAuthorizationCodeFlow(APP_ID, CLIENT_SECRET, REDIRECT_URI, code).execute();
         actor = new UserActor(authResponse.getUserId(), authResponse.getAccessToken());
+    }
+
+    public static User getInstance() {
+          if(user == null) {
+              try {
+                  return new User();
+              } catch (Exception e) {
+                  System.out.println("Error #1: User constructor");
+              }
+          }
+          return user;
     }
 
     static void setCode(String cd){

@@ -4,20 +4,29 @@ import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
 
 import java.lang.management.MemoryManagerMXBean;
+import java.util.ArrayList;
 import java.util.List;
 
 public class MemberData {
     @SerializedName("response")
     @Expose
-    private List<MembersResponse> response = null;
+    private MembersResponse response;
 
-    public List<MembersResponse> getMembersResponse() {
+    public MembersResponse getResponse() {
         return response;
     }
 
-    public void setMembersResponse(List<MembersResponse> response) {
+    public void setResponse(MembersResponse response) {
         this.response = response;
     }
 
 
+
+    public int getCount(){
+        return response.getCount();
+    }
+
+    public List<Integer> getItems(){
+        return response.getItems();
+    }
 }

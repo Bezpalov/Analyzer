@@ -38,7 +38,8 @@ public class SetOfGroups {
        for(Map.Entry<Integer, Integer> entry: map.entrySet()){
             int key = entry.getKey();
             int value = entry.getValue();
-            builder.append("Id: " + key +  "- % is: " + value/sum + "\n");
+            double res = (double)value/sum;
+            builder.append("Id: " + key +  " - % is: " + res + "\n");
        }
         return builder.toString();
     }

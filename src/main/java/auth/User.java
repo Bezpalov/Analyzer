@@ -25,6 +25,7 @@ public class User implements Uriparts{
         authResponse = apiClient.oauth()
                 .userAuthorizationCodeFlow(APP_ID, CLIENT_SECRET, REDIRECT_URI, code).execute();
         actor = new UserActor(authResponse.getUserId(), authResponse.getAccessToken());
+
     }
 
     public static User getInstance() {

@@ -13,6 +13,7 @@ import com.vk.api.sdk.httpclient.HttpTransportClient;
 import com.vk.api.sdk.queries.groups.*;
 import logic.jsonContainers.GroupData;
 import logic.jsonContainers.MemberData;
+import logic.jsonContainers.MemberGroupResponse;
 import logic.jsonContainers.MembersResponse;
 
 
@@ -24,8 +25,9 @@ public class Requests {
  ArrayList<Integer> membersOfGroup;
  ArrayList<Integer> groupsOfTheMember;
 
- HashMap<Integer, MembersResponse> finalMemberGroupCollection;
- HashMap<Integer, MembersResponse> intermediateMemberGroupCollection;
+  volatile HashMap<Integer, MembersResponse> finalMemberGroupCollection;
+  volatile HashMap<Integer, MembersResponse> intermediateMemberGroupCollection;
+  
 
  Gson gson;
  int countOfFalse;
@@ -59,14 +61,13 @@ public class Requests {
         UserActor[] actors = {actor, actor2, actor3};
         Groups groups = new Groups(client);
 
-        String name = "jamescarrey";
-        //получаем членов указанной группы
-        request.membersOfGroup = request.getGroupMembers(name, client, actor, groups);
+        String name = "gti476" ;
+        request.membersOfGroup = request.getGroupMembers(name, client, actor, groups); //получаем id членов указанной группы
 
         SetOfGroups setOfGroups = new SetOfGroups();
 
 
-        TokenThread[] tokenThreads = new TokenThread[3];
+        TokenThreads[] tokenThreads = new TokenThreads[3];
         request.initThreadObjects(tokenThreads, actors, client);
 
         for (int i = 0; i < tokenThreads.length; i++) {
@@ -80,7 +81,25 @@ public class Requests {
                 e.printStackTrace();
             }
         }
-//        new TokenThread(request, actor, 0, request.membersOfGroup.size(), 1, client).start();
+
+//        ArrayList<Integer> arrayOfIndex = new ArrayList<>();
+//        for(Map.Entry<Integer, MembersResponse> entry: request.intermediateMemberGroupCollection.entrySet()){
+//            arrayOfIndex.add(entry.getKey());
+//        }
+//        StringBuilder req = new StringBuilder("var arr = []; var groups;");
+//        ArrayList<MemberGroupResponse> additionalGroups = new ArrayList<>();
+//        int iter = 0;
+//        for (int i = 0; i < arrayOfIndex.size(); i++) {
+//            int count = request.intermediateMemberGroupCollection.get(i).getCount();
+//            while(iter < 25){
+//                req.append("groups = API.groups.get({user_id:" + + ", v :"
+//                        + Uriparts.VERSION + ", count: 1000,offset: 0 });"
+//                        + "var arr = [];" + "arr.push(groups);");
+//            }
+//        }
+
+
+//        new TokenThreads(request, actor, 0, request.membersOfGroup.size(), 1, client).start();
 
         System.out.println("group size is: " + request.membersOfGroup.size());
         for (Map.Entry<Integer, MembersResponse> entry: request.finalMemberGroupCollection.entrySet())  {
@@ -95,67 +114,71 @@ public class Requests {
         }
 
         System.out.println("size of a group: " + request.membersOfGroup.size());
+        System.out.println("intetmediate: " + request.intermediateMemberGroupCollection.size());
+        System.out.println("final: " + request.finalMemberGroupCollection.size());
+        System.out.println("false: " + request.countOfFalse);
         System.out.println("counted size: " + (request.intermediateMemberGroupCollection.size() + request.finalMemberGroupCollection.size() + request.countOfFalse));
 
 
 
 
 
+
     }
 
-    void initThreadObjects (TokenThread[] tokens, UserActor[] actors, VkApiClient client){
+    void initThreadObjects (TokenThreads[] tokens, UserActor[] actors, VkApiClient client){
         int begin = 0;
-        int end = 0;
+        int end = -1;
         int step = (int)(this.membersOfGroup.size() / tokens.length);
 
         for (int i = 0; i < tokens.length ; i++) {
 
             begin = i * step;
-            end = end + step - 1;
+            end = end + step;
             if(i == tokens.length -1)
                 end = this.membersOfGroup.size()- 1;
 
-            tokens[i] = new TokenThread(this, actors[i], begin, end, i+1, client);
+            tokens[i] = new TokenThreads(this, actors[i], begin, end, i+1, client);
 
+            System.out.println("start: "  + begin + " end: " + end);
         }
     }
         void getMembersGroup(VkApiClient client, UserActor actor, int arrayNumberStart, int arrayNumberEnd, String threadNumber)  {
         HashMap<Integer, MembersResponse> prefinalMemberGroupCollection = new HashMap<>();
         HashMap<Integer, MembersResponse> preIntermediateMemberGroupCollection = new HashMap<>();
-        int size = arrayNumberEnd;
+        int size = arrayNumberEnd - arrayNumberStart + 1;
         int offset = 0;
         int quantity = 25;
         int id;
-        int number = arrayNumberStart;
-        int countOfFalse = 0;
+        countOfFalse = 0;
         String code = null;
         JsonElement elem = null;
         JsonArray array = null;
         MembersResponse response = null;
 
         try {
-            while(number < size){
-                if(membersOfGroup.size()-1 - number < 25)
-                    quantity = membersOfGroup.size() - number;
+            while(arrayNumberStart <= arrayNumberEnd){
+                if(arrayNumberEnd - arrayNumberStart < 25)
+                    quantity =  arrayNumberEnd - arrayNumberStart;
 
-                    code = getGroupRequest(membersOfGroup, number, quantity);
+                    code = getGroupRequest(membersOfGroup, arrayNumberStart, quantity);
                     elem = client.execute().code(actor, code).execute();
                     Thread.sleep(333);
-                    System.out.println(number + " Thread number " + threadNumber);
+                    System.out.println(arrayNumberStart + " Thread number " + threadNumber);
                     array = elem.getAsJsonArray();
                     for (int i = 0; i <array.size(); i++){
 
                         if(array.get(i).toString().equals("false")){
-                            number++;
+                            arrayNumberStart++;
                             countOfFalse++;
                             continue;
                         }
                         response = gson.fromJson(array.get(i), MembersResponse.class);
                         if(response.getCount() <= 1000)
-                            prefinalMemberGroupCollection.put(number, response);
+                            prefinalMemberGroupCollection.put(arrayNumberStart, response);
                         else
-                            preIntermediateMemberGroupCollection.put(number, response);
-                        number++;
+                            preIntermediateMemberGroupCollection.put(arrayNumberStart, response);
+                        arrayNumberStart++;
                     }
             }
         } catch (ApiException e) {
@@ -168,8 +191,6 @@ public class Requests {
         System.out.println( threadNumber + " size is:" + (prefinalMemberGroupCollection.size() + preIntermediateMemberGroupCollection.size() + countOfFalse) );
         mergeArrays(prefinalMemberGroupCollection, finalMemberGroupCollection);
         mergeArrays(preIntermediateMemberGroupCollection, intermediateMemberGroupCollection);
-
-
     }
     private synchronized HashMap mergeArrays(HashMap<Integer, MembersResponse> from, HashMap<Integer, MembersResponse> to){
         to.putAll(from);
@@ -224,17 +245,18 @@ public class Requests {
     }
 
     private ArrayList<Integer> getGroupMembers(String id, VkApiClient client, UserActor actor, Groups groups){
-        GroupData data = getGroupInfo(id, groups, actor);
+        GroupData data = getGroupInfo(id, groups, actor); //Получаем кол-во человек в группе и ее id
         int count = data.getMembersCount(0);
         int groupID = data.getID(0);
-        ArrayList<Integer> list = new ArrayList<Integer>();
+
+        ArrayList<Integer> list = new ArrayList<>();
         for (int i = 0; i < count; i = i + 25000) {
             try {
-                String req = get25KMembersRequests(groupID, count, i);
-                Thread.sleep(300);
+                String req = get25KMembersRequests(groupID, count, i); //создаем execute запрос и берем по 25к членов группы за запрос
                 System.out.println(i);
-                JsonElement element = client.execute().code(actor, req).execute();
-                parseTo(list, element);
+                JsonElement element = client.execute().code(actor, req).execute(); //запрос
+                Thread.sleep(300); //задержка, т.к. можно делать не более 3-х запросов в секунду
+                parseTo(list, element); // парсинг значений из Json в коллекцию
             } catch (ApiException e) {
                 e.printStackTrace();
                 System.out.println("api");

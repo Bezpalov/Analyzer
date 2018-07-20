@@ -4,7 +4,7 @@ import auth.UserAuth;
 import com.vk.api.sdk.client.VkApiClient;
 import com.vk.api.sdk.client.actors.UserActor;
 
-public class TokenThread extends Thread {
+public class TokenThreads extends Thread {
     Requests request;
     UserActor actor;
     int begin;
@@ -13,7 +13,7 @@ public class TokenThread extends Thread {
     VkApiClient client;
     int step;
 
-    public TokenThread( Requests request, UserActor actor, int begin, int end, int threadNumber, VkApiClient client){
+    public TokenThreads(Requests request, UserActor actor, int begin, int end, int threadNumber, VkApiClient client){
         this.request = request;
         this.actor = actor;
         this.begin = begin;
